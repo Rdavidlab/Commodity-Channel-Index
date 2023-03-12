@@ -1,0 +1,194 @@
+### Commodity Channel Index (CCI)
+
+### Method 1: 
+## Disclaimer 1: This Method is inefficient. It is solely done to give a brief demonstration of what the CCI function is doing. 
+We will improve upon the first method in the Second Method. 
+## Disclaimer 2: This file is not meant to replace the CCI function found in the TTR package (https://cran.r-project.org/web/packages/TTR/TTR.pdf). 
+Rather, this is an alternative that I created, which I find more intuitive.
+
+```{r}
+# Load the Data
+library(quantmod)
+stock_symbols1 <- "GOOG"
+stock_data1 <- getSymbols(stock_symbols1,auto.assign = FALSE)
+head(stock_data1)
+```
+```{r}
+# Calculate Typical Price (TP)
+stock_data1$TP <- (Hi(stock_data1)+Lo(stock_data1)+Cl(stock_data1))/3
+head(stock_data1)
+```
+```{r}
+# Calculate 20-period SMA of TP
+stock_data1$SMA <- rollmeanr(stock_data1$TP,k=20)
+head(stock_data1,n=20)
+```
+
+```{r}
+# Calculate Mean Deviation:
+stock_data1$MD <- NA
+n <- 20
+  
+for (i in 20:nrow(stock_data1)) {
+  stock_data1$MD[i] <- (abs(stock_data1$SMA[[i]]-stock_data1$TP[[i]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-1]]) +
+    abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-2]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-3]]) +     abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-4]])
+  + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-5]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-6]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-7]]) +
+    abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-8]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-9]])+abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-10]])+
+    abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-11]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-12]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-13]])   + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-14]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-15]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-16]])   + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-17]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-18]]) + abs(stock_data1$SMA[[i]]-stock_data1$TP[[i-19]]))/n
+  
+}
+
+```
+
+```{r}
+head(stock_data1, n=25)
+tail(stock_data1)
+```
+
+```{r}
+# Create CCI Column
+k <- 0.015
+stock_data1$CCI <- (stock_data1$TP- stock_data1$SMA)/ (k*stock_data1$MD)
+head(stock_data1, n= 25)
+```
+
+
+```{r}
+plot(stock_data1$CCI["2022"])
+```
+
+```{r}
+library(TTR)
+y <- getSymbols("GOOG", auto.assign = FALSE)
+head(y)
+z <- CCI(y[,c("GOOG.High","GOOG.Low","GOOG.Close")],20)
+```
+```{r}
+head(z,n=25)
+```
+
+
+### Method 2 (Better Version)
+```{r}
+# Load the Data
+library(quantmod)
+stock_symbols2 <- "GOOG"
+stock_data2 <- getSymbols(stock_symbols2,auto.assign = FALSE)
+head(stock_data2)
+```
+```{r}
+# Calculate Typical Price (TP)
+stock_data2$TP <- (Hi(stock_data2)+Lo(stock_data2)+Cl(stock_data2))/3
+head(stock_data2)
+```
+```{r}
+# Calculate 20-period SMA of TP
+stock_data2$SMA <- rollmeanr(stock_data2$TP,k=20)
+head(stock_data2,n=20)
+```
+
+```{r}
+# Calculate Mean Deviation:
+stock_data2$MD <- NA
+n <- 20
+
+# stock_data2$MD[20] <- sum(abs(stock_data2$SMA[[20]] - as.numeric(stock_data2$TP[1:20])))
+# stock_data2$MD[21] <- sum(abs(stock_data2$SMA[[21]] - as.numeric(stock_data2$TP[2:21])))  
+# stock_data2$MD[22] <- sum(abs(stock_data2$SMA[[22]] - as.numeric(stock_data2$TP[3:22])))   
+  
+
+for (i in n:nrow(stock_data2)) {
+  stock_data2$MD[i] <- (sum(abs(stock_data2$SMA[[i]] - as.numeric(stock_data2$TP[(i-19):i]))))/n
+}
+
+```
+
+
+```{r}
+head(stock_data2, n= 25)
+```
+
+
+```{r}
+# Create CCI Column
+k <- 0.015
+stock_data2$CCI <- (stock_data2$TP- stock_data2$SMA)/ (k*stock_data2$MD)
+head(stock_data2, n= 25)
+```
+
+
+```{r}
+plot(stock_data2$CCI["2022"])
+```
+
+***Function***
+```{r}
+myCCI <- function(stock_data, n=20, c=0.015) {
+  stock_data$TP <- (Hi(stock_data)+Lo(stock_data)+Cl(stock_data))/3
+  stock_data$SMA <- rollmeanr(stock_data$TP,n)
+  # Calculate Mean Deviation:
+  stock_data$MD <- NA
+
+  # stock_data$MD[20] <- sum(abs(stock_data$SMA[[20]] - as.numeric(stock_data$TP[1:20])))
+  # stock_data$MD[21] <- sum(abs(stock_data$SMA[[21]] - as.numeric(stock_data$TP[2:21])))  
+  # stock_data$MD[22] <- sum(abs(stock_data$SMA[[22]] - as.numeric(stock_data$TP[3:22])))   
+
+  for (i in n:nrow(stock_data)) {
+    stock_data$MD[i] <- (sum(abs(stock_data$SMA[[i]] - as.numeric(stock_data$TP[(i-(n-1)):i]))))/n
+    }
+    
+  stock_data$CCI <- (stock_data$TP- stock_data$SMA)/ (c * stock_data$MD)
+  return(stock_data$CCI)
+}
+```
+
+```{r}
+stock_symbol <- "GOOG" # Enter the ticker symbol between the "" marks
+stock_data <- getSymbols(stock_symbol, auto.assign = FALSE)
+head(stock_data)
+```
+
+
+```{r}
+# Run function to generate CCI of your favorite stock
+head(myCCI(stock_data),n=25)
+```
+
+***Try on different parameters:***
+```{r}
+head(myCCI(stock_data,n=30, c=0.015),n=40)
+```
+
+***Compare to TTR***
+```{r}
+library(TTR)
+y <- getSymbols("GOOG", auto.assign = FALSE)
+z <- CCI(y[,c("GOOG.High","GOOG.Low","GOOG.Close")],n=30, c=0.015)
+head(z, n=40)
+```
+
+
+Try on different stock:
+```{r}
+stock_symbol <- "MSFT" # Enter the ticker symbol between the "" marks
+stock_data <- getSymbols(stock_symbol, auto.assign = FALSE)
+head(stock_data)
+```
+
+```{r}
+head(myCCI(stock_data, n=10, c=0.02), n=25)
+```
+
+
+```{r}
+library(TTR)
+y <- getSymbols("MSFT", auto.assign = FALSE)
+z <- CCI(y[,c("MSFT.High","MSFT.Low","MSFT.Close")],n=10, c=0.02)
+head(z, n=25)
+```
+
+Code generates consistent output compared to TTR: https://cran.r-project.org/web/packages/TTR/TTR.pdf
+
+
+
+
